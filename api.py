@@ -8,29 +8,13 @@ from time import time
 from datetime import datetime
 from copy import deepcopy
 
-<<<<<<< HEAD
-headers = {
-    'Host': 'book.sfacg.com',
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-    'Referer': 'https://book.sfacg.com/',
-    'Accept-Encoding': 'gzip, deflate',
-    'Accept-Charset': 'UTF-8',
-    'Accept-Language': 'zh-CN,zh;q=0.9',
-}
-cookies = {
-    '.SFCommunity': '<token>', # replace <token> with your .SFCommunity cookie
-}
-=======
 '''
-Cookie 的 .SFCommunity 和 seession_APP 是必须的
+Cookie 的 .SFCommunity 和 session_APP 是必须的
 可从 Android 的 /data/data/com.sfacg/app_webview/Default/Cookie 获取
-其为 SQLite Database
+其格式为 SQLite Database
+其中 session_APP 必须是从 app 端获取的有效会话值
+.SFCommunity 可以是任意有效值
 '''
->>>>>>> a361a8b (feat: integrate official api)
 
 with open('secrets.csv') as f:
     __SECRETPOOL__ = [e for e in csv.DictReader(f)]
