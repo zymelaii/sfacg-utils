@@ -23,15 +23,18 @@ password = '<put-you-password-here>'
 
 proxy = SFBookProxy().login(account, password)
 
-proxy.me                    #!< view auth infomation
+proxy.me                        #!< view auth infomation
 novelId = 123456
-book = proxy.novel(novelId) #!< create novel instance
-book.info                   #!< novel info
-book.catalogue              #!< full catalogue of the book
-book.volumes                #!< volumes of the book
-volume = book.volume(2)     #!< create instance of the 3th volume
-volume.info                 #!< volume info
-volume.chapers              #!< chapters of the volume
+book = proxy.novel(novelId)     #!< create novel instance
+book.info                       #!< novel info
+book.catalogue                  #!< full catalogue of the book
+book.volumes                    #!< volumes of the book
+volume = book.volume(2)         #!< create instance of the 3th volume
+volume.info                     #!< volume info
+volume.chapers                  #!< chapters of the volume
+chapter = volume.chapter(-7)    #!< create instance of the penultimate chapter 7
+chapter.info                    #!< chapter info
+chapter.content                 #!< chapter content
 ```
 
 ## Contributors

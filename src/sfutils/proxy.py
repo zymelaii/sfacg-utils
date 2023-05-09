@@ -68,7 +68,6 @@ class SFBookMetaProxy(CachedItem):
 
     def _try_login(self, account, password):
         assert account and password
-        url = 'https://api.sfacg.com/sessions'
         params = {
             'username': account,
             'password': password,
@@ -107,6 +106,8 @@ class SFBookMetaProxy(CachedItem):
         return self
 
     def logout(self):
+        self.token = ''
+        self.session = ''
         self.logon = False
         return self
 
@@ -140,6 +141,15 @@ class SFBookProxy(SFBookMetaProxy):
 
     def GetNovelDirs(self, novelId, expand=[]):
         return self._invoke_api('GET', f'novels/{novelId}/dirs', params={'expand': ','.join(expand)})
+
+    '''
+    NovelAPI.Controllers.NovelAPIController
+    System.Net.Http.HttpResponseMessage GetChapter(Int32, System.String)
+    '''
+
+    def GetChapter(self, chapterId, expand=[], autoOrder=False):
+        params = {'expand': ','.join(expand), 'autoOrder': autoOrder}
+        return self._invoke_api('GET', f'Chaps/{chapterId}', params=params)
 
     def novel(self, novelId):
         assert (isinstance(novelId, int) and novelId < 2 ** 31 - 1)
@@ -201,6 +211,16 @@ class SFBookProxy(SFBookMetaProxy):
             self.volumeId = volumeId
             self.cache_store('info', info)
 
+        def chapter(self, chapterId):
+            totalChapters = len(self.chapters)
+            # FIXME: validate chapter order
+            if chapterId >= 0 and chapterId < totalChapters:
+                chapterId = self.chapters[chapterId]['chapId']
+            if chapterId < 0 and chapterId >= -totalChapters:
+                chapterId = self.chapters[totalChapters + chapterId]['chapId']
+            result = next(filter(lambda e: e['chapId'] == chapterId, self.chapters), None)
+            return SFBookProxy.ChapterWrapper(self.novel, chapterId, result) if result is not None else None
+
         @property
         def info(self):
             succeed, value = self.cache_load('info')
@@ -215,3 +235,47 @@ class SFBookProxy(SFBookMetaProxy):
         def chapters(self):
             result = next(filter(lambda e: e['volumeId'] == self.volumeId, self.novel.catalogue), None)
             return result['chapterList'] if result is not None else None
+
+    class ChapterWrapper(CachedItem):
+        def __init__(self, novel, chapterId, info):
+            super(SFBookProxy.ChapterWrapper, self).__init__()
+            self.delegator = novel.delegator
+            self.novel = novel
+            self.chapterId = chapterId
+            self.cache_store('info', info)
+
+        def fetch(self, force=False):
+            # FIXME: depend on the subscription info to decide whether to fetch content or not
+            succeed, value = self.cache_load('info')
+            if force or not succeed or 'expand' not in value or 'content' not in value['expand']:
+                resp = self.delegator.GetChapter(self.chapterId, expand=['content'])
+                expand = value.get('expand', {})
+                expand.update(resp['data']['expand'])
+                value.update(resp['data'])
+                value['expand'] = expand
+                self.cache_store('info', value)
+
+        @property
+        def info(self):
+            succeed, value = self.cache_load('info')
+            assert value is not None
+            if not succeed:
+                volume = self.volume(value['volumeId'])
+                result = next(filter(lambda e: e['chapId'] == self.chapterId, volume.chapters), None)
+                assert result is not None
+                assert 'expand' not in result
+                value.update(result)
+                self.cache_store('info', value)
+            if 'expand' in value:
+                if len(value['expand']) == 0:
+                    value.pop('expand')
+                elif 'content' in value['expand']:
+                    value['expand'].pop('content')
+            return value
+
+        @property
+        def content(self):
+            self.fetch()
+            succeed, value = self.cache_load('info')
+            assert succeed
+            return value['expand']['content']

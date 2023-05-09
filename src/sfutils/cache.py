@@ -9,7 +9,7 @@ class CachedItem:
         if key not in self.cache:
             return (False, None)
         storeTime, value = self.cache[key]
-        assert(time() > storeTime)
+        assert time() >= storeTime
         succeed = time() - storeTime < validTime
         return (succeed, deepcopy(value))
 
