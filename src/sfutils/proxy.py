@@ -8,57 +8,18 @@ import hashlib
 from time import time
 from copy import deepcopy
 
-
-class SFBookMetaProxy:
+class SFBookMetaProxy(CachedItem):
     def __init__(self, **kwargs):
-        '''
-        API Cookie .SFCommunity
-        用户标识 TOKEN
-        '''
+        super(SFBookMetaProxy, self).__init__()
         self.token = kwargs.get('token', '')
-
-        '''
-        API Cookie session_APP
-        使用与登录用户相关的 API 必须提供有效的 APP Session
-        session_APP 可从 /data/data/com.sfacg/app_webview/Default/Cookie 获取
-        '''
         self.session = kwargs.get('session', '')
-
-        '''
-        设备 TOKEN
-        由设备唯一确认，若未提供则用随机生成的 UUID 代替
-        '''
         self.devicetoken = kwargs.get('devicetoken', str(uuid.uuid1())).lower()
-        try:
-            foobar = uuid.UUID(self.devicetoken)
-        except ValueError:
-            assert (False)
-
-        '''
-        菠萝包轻小说 App 版本
-        与 APPKEY 直接相关，不同的版本有不同的 APPKEY
-        '''
         self.appversion = kwargs.get('appversion', list(constants.appkey_dict.keys())[0])
-        assert (self.appversion in constants.appkey_dict.keys())
-
-        '''
-        菠萝包轻小说 App 登陆渠道
-        '''
         self.channel = kwargs.get('channel', 'HomePage')
-
         self.logon = False
-
-    '''
-    API 请求标头 User-Agent
-    User-Agent 指定的 appversion 必须与使用的 APPKEY 相配对
-    '''
 
     def ua(self):
         return f'boluobao/{self.appversion}/{self.channel}/{self.devicetoken}'
-
-    '''
-    API 请求标头 SFSecurity
-    '''
 
     def security(self):
         appkey = constants.appkey_dict[self.appversion]
@@ -73,12 +34,8 @@ class SFBookMetaProxy:
         params['sign'] = encryptor.hexdigest().upper()
         return '&'.join(map(lambda e: f'{e[0]}={e[1]}', params.items()))
 
-    '''
-    API 请求标头
-    仅提供 GET 请求的标头
-    '''
-
-    def headers(self):
+    # NOTE: defaultly for GET http method
+    def headers(self, extraHeaders=None):
         headers = {
             'Accept-Charset': 'UTF-8',
             'Authorization': constants.authorization,
@@ -86,11 +43,12 @@ class SFBookMetaProxy:
             'User-Agent': self.ua(),
             'SFSecurity': self.security(),
         }
+        if extraHeaders is not None:
+            assert isinstance(extraHeaders, dict)
+            for key, value in extraHeaders.items():
+                result = next(filter(lambda e: e.lower() == key.lower(), headers.keys()), None)
+                headers[key if result is None else result] = value
         return headers
-
-    '''
-    API 请求 Cookies
-    '''
 
     def cookies(self):
         cookies = {
@@ -99,30 +57,51 @@ class SFBookMetaProxy:
         }
         return cookies
 
-    def _invoke_api(self, subpath, params=None):
-        url = f'https://api.sfacg.com/{subpath}'
-        resp = requests.get(url, params=params, headers=self.headers(), cookies=self.cookies())
-        return resp.json()
+    def _invoke_api(self, method, apiUri, asJson=True, **kwargs):
+        kwargs.setdefault('headers', self.headers())
+        kwargs.setdefault('cookies', self.cookies())
+        url = f'https://api.sfacg.com/{apiUri}'
+        session = requests.Session()
+        req = requests.Request(method, url, **kwargs)
+        resp = session.send(req.prepare())
+        return resp.json() if asJson else resp
 
-    def login(self, username=None, password=None, **kwargs):
-        # check if username and password is empty
-        if username and password:
-            params = {'username': username, 'password': password}
-            headers = self.headers()
-            headers['Content-Type'] = 'application/json'
-            response = requests.post("https://api.sfacg.com/sessions", data=json.dumps(params), headers=headers)
-            if response.json().get('status').get('httpCode') == 200:
-                print("Login Success, Saving Cookie...")
-                # get token and session from response
-                self.token = response.cookies.get_dict()['.SFCommunity']
-                self.session = response.cookies.get_dict()['session_APP']
-                self.logon = True
-            else:
-                print("Login failed, please check your username and password.")
+    def _try_login(self, account, password):
+        assert account and password
+        url = 'https://api.sfacg.com/sessions'
+        params = {
+            'username': account,
+            'password': password,
+        }
+        data = json.dumps(params)
+        headers = self.headers({'Content-Type': 'application/json'})
+        resp = self._invoke_api('POST', 'sessions', data=data, headers=headers, asJson=False)
+        if resp.status_code != 200:
+            return None
+        result = {
+            'token': resp.cookies['.SFCommunity'],
+            'session': resp.cookies['session_APP'],
+        }
+        return result
+
+    def login(self, account=None, password=None, **kwargs):
+        # TODO: handle expired time
+        # reject login operations in the logon state unless "force" is specified
+        force = kwargs.get('force', False)
+        if self.logon and force:
+            self.logout()
         if not self.logon:
+            # login with account & password
+            if account and password:
+                result = self._try_login(account, password)
+                if result is not None:
+                    self.token = result['token']
+                    self.session = result['session']
+            # specify manually
             if len(self.token) == 0 or len(self.session) == 0:
                 self.token = kwargs.get('token', self.token)
                 self.session = kwargs.get('session', self.session)
+            # verify auth
             if self.me is not None:
                 self.logon = True
         return self
@@ -132,14 +111,15 @@ class SFBookMetaProxy:
         return self
 
     @property
-    def me(self, expand=None):
-        if expand is None:
-            expand = []
-        resp = self._invoke_api('user', params={
-            'expand': ','.join(expand)
-        })
-        return resp['data'] if resp['status']['httpCode'] == 200 else None
-
+    def me(self, expand=[]):
+        succeed, value = self.cache_load('me')
+        if succeed:
+            return value
+        # TODO: merge expand info
+        resp = self._invoke_api('GET', 'user', params={'expand': ','.join(expand)})
+        value = resp['data'] if resp['status']['httpCode'] == 200 else value
+        self.cache_store('me', value)
+        return value
 
 class SFBookProxy(SFBookMetaProxy):
     def __init__(self, **kwargs):
@@ -151,7 +131,7 @@ class SFBookProxy(SFBookMetaProxy):
     '''
 
     def GetNovel(self, novelId, expand=[]):
-        return self._invoke_api(f'novels/{novelId}', params={'expand': ','.join(expand)})
+        return self._invoke_api('GET', f'novels/{novelId}', params={'expand': ','.join(expand)})
 
     '''
     NovelAPI.Controllers.NovelAPIController
@@ -159,7 +139,7 @@ class SFBookProxy(SFBookMetaProxy):
     '''
 
     def GetNovelDirs(self, novelId, expand=[]):
-        return self._invoke_api(f'novels/{novelId}/dirs', params={'expand': ','.join(expand)})
+        return self._invoke_api('GET', f'novels/{novelId}/dirs', params={'expand': ','.join(expand)})
 
     def novel(self, novelId):
         assert (isinstance(novelId, int) and novelId < 2 ** 31 - 1)
