@@ -104,11 +104,13 @@ class SFBookMetaProxy:
         resp = requests.get(url, params=params, headers=self.headers(), cookies=self.cookies())
         return resp.json()
 
-    def login(self, username='', password='', **kwargs):
+    def login(self, username=None, password=None, **kwargs):
         # check if username and password is empty
         if username and password:
-            params: str = json.dumps({'username': username, 'password': password})
-            response = requests.post("https://api.sfacg.com/sessions", params=params)
+            params = {'username': username, 'password': password}
+            headers = self.headers()
+            headers['Content-Type'] = 'application/json'
+            response = requests.post("https://api.sfacg.com/sessions", data=json.dumps(params), headers=headers)
             if response.json().get('status').get('httpCode') == 200:
                 print("Login Success, Saving Cookie...")
                 # get token and session from response
