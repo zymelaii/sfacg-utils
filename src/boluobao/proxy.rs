@@ -1,13 +1,16 @@
-use std::collections::HashMap;
-
-use anyhow::{Error, Ok, Result};
+use anyhow::{Error, Result};
+use dateparser::DateTimeUtc;
 use regex::Regex;
 use reqwest::blocking::Client;
 use reqwest::header::{
     HeaderMap, ACCEPT, ACCEPT_CHARSET, AUTHORIZATION, CONTENT_TYPE, SET_COOKIE, USER_AGENT,
 };
-use serde_json::json;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 pub use uuid::Uuid;
+
+use crate::consts::APIPREFIX;
 
 use super::api::*;
 use super::consts;
@@ -28,7 +31,7 @@ pub struct Proxy {
     version: String,
     channel: String,
     device_token: String,
-    cache: HashMap<String, String>,
+    cache: serde_json::Value,
 }
 
 impl ProxyBuilder {
@@ -51,7 +54,7 @@ impl ProxyBuilder {
                 version: config.version,
                 channel: config.channel,
                 device_token: config.device_token,
-                cache: HashMap::new(),
+                cache: json!({}),
             })
         } else {
             Err(Error::msg(format!(
@@ -110,7 +113,26 @@ impl Proxy {
 
 impl AuthApi for Proxy {
     fn is_authenticated(&self) -> bool {
-        self.cache.contains_key(".SFCommunity") && self.cache.contains_key("session_APP")
+        if let Some(value) = self.cache.get("auth") {
+            let map = value.as_object().unwrap();
+            if !(map.contains_key(".SFCommunity") && map.contains_key("session_APP")) {
+                return false;
+            }
+            let expires = map
+                .get("expires")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap();
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            expires > timestamp
+        } else {
+            false
+        }
     }
 
     fn login(&mut self, account: &str, password: &str) -> Option<String> {
@@ -120,7 +142,7 @@ impl AuthApi for Proxy {
 
         let client = Client::new();
 
-        let url = "https://api.sfacg.com/sessions";
+        let url = format!("{}/sessions", APIPREFIX);
         let secrets = json!({
             "username": account,
             "password": password,
@@ -142,35 +164,52 @@ impl AuthApi for Proxy {
                 Some(status.get("msg").unwrap().to_string())
             } else {
                 Some(resp.to_string())
-            }
+            };
         }
 
-        let re = Regex::new(r"^(?<key>[^=]+)=(?<value>[^;]+)").unwrap();
-        let cookies: HashMap<&str, &str> =
+        let re = Regex::new(r"^(?<key>[^=]+)=(?<value>[^;]+).*expires=(?<expires>[^;]+)").unwrap();
+        let cookies: HashMap<&str, (u64, &str)> =
             HashMap::from_iter(resp.headers().get_all(SET_COOKIE).iter().map(|value| {
                 let result = re.captures(value.to_str().unwrap()).unwrap();
+                let expires = result
+                    .name("expires")
+                    .unwrap()
+                    .as_str()
+                    .replace("-", " ")
+                    .parse::<DateTimeUtc>()
+                    .unwrap()
+                    .0
+                    .timestamp() as u64;
                 (
                     result.name("key").unwrap().as_str(),
-                    result.name("value").unwrap().as_str(),
+                    (expires, result.name("value").unwrap().as_str()),
                 )
             }));
 
+        let mut auth: HashMap<String, String> = HashMap::new();
+        let mut auth_expires = u64::MAX;
         for key in vec![".SFCommunity", "session_APP"] {
             assert!(cookies.contains_key(key));
-            let value = cookies.get(key).unwrap().to_string();
-            self.cache.insert(key.to_string(), value);
+            let (expires, value) = cookies.get(key).unwrap();
+            if expires < &auth_expires {
+                auth_expires = expires.clone();
+            }
+            auth.insert(key.to_string(), value.to_string());
         }
+        auth.insert("expires".to_string(), auth_expires.to_string());
+
+        let auth = Value::from_iter(auth.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        self.cache
+            .as_object_mut()
+            .unwrap()
+            .insert("auth".to_string(), auth);
 
         None
     }
 
     fn logout(&mut self) -> bool {
-        if self.is_authenticated() {
-            self.cache.remove(".SFCommunity");
-            self.cache.remove("session_APP");
-            true
-        } else {
-            false
-        }
+        let authenticated = self.is_authenticated();
+        self.cache.as_object_mut().unwrap().remove("auth");
+        authenticated
     }
 }

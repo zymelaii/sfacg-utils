@@ -1,5 +1,7 @@
 use phf::{phf_map, Map};
 
+pub const APIPREFIX: &'static str = "https://api.sfacg.com";
+
 pub const AUTH: &'static str = "Basic YW5kcm9pZHVzZXI6MWEjJDUxLXl0Njk7KkFjdkBxeHE=";
 
 pub const APPKEYS: Map<&'static str, &'static str> = phf_map! {
