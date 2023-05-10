@@ -8,7 +8,7 @@ use reqwest::header::{
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-pub use uuid::Uuid;
+use uuid::Uuid;
 
 use crate::consts::APIPREFIX;
 
@@ -118,13 +118,7 @@ impl AuthApi for Proxy {
             if !(map.contains_key(".SFCommunity") && map.contains_key("session_APP")) {
                 return false;
             }
-            let expires = map
-                .get("expires")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .parse::<u64>()
-                .unwrap();
+            let expires = map.get("expires").unwrap().as_u64().unwrap();
             let timestamp = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -196,9 +190,13 @@ impl AuthApi for Proxy {
             }
             auth.insert(key.to_string(), value.to_string());
         }
-        auth.insert("expires".to_string(), auth_expires.to_string());
+        auth.insert("account".to_string(), account.to_string());
+        auth.insert("password".to_string(), password.to_string());
 
-        let auth = Value::from_iter(auth.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        let mut auth = Value::from_iter(auth.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        auth.as_object_mut()
+            .unwrap()
+            .insert("expires".to_string(), json!(auth_expires));
         self.cache
             .as_object_mut()
             .unwrap()
