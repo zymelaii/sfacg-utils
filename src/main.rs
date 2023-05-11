@@ -1,7 +1,11 @@
 use sfutils::Proxy;
 
-use clap::{arg, Arg, ArgAction, Command};
+use anyhow::Result;
+use clap::{arg, Command};
 use colored::*;
+use directories::ProjectDirs;
+use std::fs;
+use std::io::Read;
 
 fn cli() -> Command {
     let auth = Command::new("auth")
@@ -10,10 +14,14 @@ fn cli() -> Command {
         .subcommand(
             Command::new("login")
                 .about("Authenticate with a boluobao host")
-                .arg(arg!(--account -u <ACCOUNT> "The account to authenticate with").required(true))
+                .arg(arg!(--username -U <USERNAME> "The user to authenticate"))
+                .arg(
+                    arg!(--account -u <ACCOUNT> "The account to authenticate with")
+                        .required_unless_present("username"),
+                )
                 .arg(
                     arg!(--password -p <PASSWORD> "The password to authenticate with")
-                        .required(true),
+                        .required_unless_present("username"),
                 )
                 .arg_required_else_help(true),
         )
@@ -51,50 +59,158 @@ fn cli() -> Command {
         .subcommand(auth)
 }
 
+fn local_storage() -> Result<toml::Table> {
+    let dirs = ProjectDirs::from("", "", "sfutils").unwrap();
+    let data_dir = dirs.data_local_dir();
+    if !data_dir.exists() {
+        fs::create_dir_all(data_dir)?;
+    }
+
+    let data_file = data_dir.join("auth.toml");
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(data_file)?;
+
+    let mut buffer = String::default();
+    file.read_to_string(&mut buffer)?;
+
+    Ok(buffer.parse::<toml::Table>().unwrap())
+}
+
+fn get_authenticated_users() -> Result<Vec<String>> {
+    Ok(local_storage()?.keys().into_iter().cloned().collect())
+}
+
+fn cleanup_auth() {
+    let _ = fs::remove_file(
+        ProjectDirs::from("", "", "sfutils")
+            .unwrap()
+            .data_local_dir()
+            .join("auth.toml"),
+    );
+}
+
+fn update_auth(profile: &serde_json::Value, password: &str) -> Result<String> {
+    let mut data = local_storage()?;
+    let mut auth = toml::Table::new();
+
+    let user = profile.get("nickName").unwrap().as_str().unwrap();
+    let email = profile.get("email").unwrap().as_str().unwrap();
+    let phone = profile.get("phoneNum").unwrap().as_str().unwrap();
+
+    auth.insert("email".to_string(), toml::Value::String(email.to_string()));
+    auth.insert("phone".to_string(), toml::Value::String(phone.to_string()));
+    auth.insert(
+        "password".to_string(),
+        toml::Value::String(password.to_string()),
+    );
+
+    data.insert(user.to_string(), toml::Value::from(auth));
+
+    let data_file = ProjectDirs::from("", "", "sfutils")
+        .unwrap()
+        .data_local_dir()
+        .join("auth.toml");
+    fs::write(data_file, data.to_string())?;
+
+    Ok(user.to_string())
+}
+
+fn remove_auth(users: &Vec<String>) -> Result<()> {
+    let mut data = local_storage()?;
+
+    users.iter().for_each(|user| {
+        data.remove(user);
+    });
+
+    let data_file = ProjectDirs::from("", "", "sfutils")
+        .unwrap()
+        .data_local_dir()
+        .join("auth.toml");
+    fs::write(data_file, data.to_string())?;
+
+    Ok(())
+}
+
+fn get_secrets_of(username: &str) -> Result<(String, String)> {
+    match local_storage()?.get(username) {
+        Some(value) => {
+            let account = value.get("email").unwrap().as_str().unwrap().to_string();
+            let password = value.get("password").unwrap().as_str().unwrap().to_string();
+            Ok((account, password))
+        }
+        None => Err(anyhow::Error::msg("unknown user")),
+    }
+}
+
 fn main() {
     let matches = cli().get_matches();
 
     match matches.subcommand() {
         Some(("auth", matches)) => match matches.subcommand() {
             Some(("login", matches)) => {
-                let account = matches.get_one::<String>("account").expect("requires");
-                let password = matches.get_one::<String>("password").expect("requires");
+                let account: String;
+                let password: String;
+                if let Some(username) = matches.get_one::<String>("username") {
+                    match get_secrets_of(&username) {
+                        Ok(secrets) => {
+                            (account, password) = secrets;
+                        }
+                        Err(_) => {
+                            eprintln!(
+                                "{}: {username}",
+                                "Unknown user to be authenticated".bold().red()
+                            );
+                            return;
+                        }
+                    }
+                } else {
+                    account = matches.get_one::<String>("account").unwrap().to_owned();
+                    password = matches.get_one::<String>("password").unwrap().to_owned();
+                }
 
                 let mut proxy = Proxy::default();
-                if let Some(msg) = proxy.login(account, password) {
-                    eprintln!("{}: {}", "Authentication failed".bold().red(), msg);
+                if let Some(msg) = proxy.login(&account, &password) {
+                    eprintln!("{}: {msg}", "Authentication failed".bold().red());
                     return;
-                } else {
-                    // TODO: store credential to local storage
-                    if let Ok(profile) = proxy.profile() {
-                        println!("{profile:#?}");
-                    }
+                } else if let Ok(profile) = proxy.profile() {
+                    let profile = serde_json::Value::from(profile);
+                    let user = update_auth(&profile, &password).unwrap();
+                    println!("Logged in to boluobao as {}", user.bold());
                 }
             }
             Some(("logout", matches)) => {
-                let users: Vec<&String> = if matches.get_flag("all") {
-                    // TODO: get all local credentials
-                    vec![]
+                if matches.get_flag("all") {
+                    cleanup_auth()
                 } else {
-                    matches.get_many("USER").into_iter().flatten().collect()
+                    let users: Vec<String> = matches.get_many("USER").unwrap().cloned().collect();
+                    let _ = remove_auth(&users);
                 };
-                for user in users {
-                    // TODO: logout and clean up local storage
-                }
             }
-            Some(("status", matches)) => {
-                match matches.subcommand() {
-                    Some(("list", matches)) => {
-                        // TODO: get all local credentials
+            Some(("status", matches)) => match matches.subcommand() {
+                Some(("list", _)) => {
+                    for user in get_authenticated_users().unwrap() {
+                        println!("{}", user.bold())
                     }
-                    Some(("view", matches)) => {
-                        let user = matches.get_one::<String>("USER").unwrap();
-                        // TODO: validate user and display informations
-                    }
-                    _ => unreachable!(),
                 }
-            }
-            Some(("refresh", matches)) => {}
+                Some(("view", matches)) => {
+                    let user = matches.get_one::<String>("USER").unwrap();
+                    let users = get_authenticated_users().unwrap();
+                    if users.contains(user) {
+                        let (account, password) = get_secrets_of(&user).unwrap();
+                        let mut proxy = Proxy::default();
+                        proxy.login(&account, &password);
+                        println!("{} {:#?}", user.bold(), proxy.profile().unwrap());
+                    } else {
+                        eprintln!("{}: {}", "Unknown user".bold().red(), user);
+                        return;
+                    }
+                }
+                _ => unreachable!(),
+            },
+            Some(("refresh", _)) => {}
             _ => unreachable!(),
         },
         _ => unreachable!(),
