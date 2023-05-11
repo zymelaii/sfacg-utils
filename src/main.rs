@@ -66,7 +66,9 @@ fn main() {
                     return;
                 } else {
                     // TODO: store credential to local storage
-                    println!("{proxy:#?}");
+                    if let Ok(profile) = proxy.profile() {
+                        println!("{profile:#?}");
+                    }
                 }
             }
             Some(("logout", matches)) => {

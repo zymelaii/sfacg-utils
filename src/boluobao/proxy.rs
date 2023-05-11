@@ -1,9 +1,13 @@
 use anyhow::{Error, Result};
 use dateparser::DateTimeUtc;
 use regex::Regex;
-use reqwest::blocking::Client;
-use reqwest::header::{
-    HeaderMap, ACCEPT, ACCEPT_CHARSET, AUTHORIZATION, CONTENT_TYPE, SET_COOKIE, USER_AGENT,
+use reqwest::{
+    blocking::{Client, RequestBuilder},
+    header::{
+        HeaderMap, ACCEPT, ACCEPT_CHARSET, AUTHORIZATION, CONTENT_TYPE, COOKIE, SET_COOKIE,
+        USER_AGENT,
+    },
+    Method,
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -109,10 +113,32 @@ impl Proxy {
 }
 
 impl Proxy {
+    pub fn request(&self, method: Method, api: &str) -> RequestBuilder {
+        let prefix = consts::APIPREFIX;
+        let client = Client::new();
+        let client = client
+            .request(method, format!("{prefix}/{api}"))
+            .headers(self.default_headers());
+        if self.is_authenticated() {
+            let cache = self.cache.as_object().unwrap();
+            let auth = cache.get("auth").unwrap().as_object().unwrap();
+            let token = auth.get("token").unwrap().as_str().unwrap();
+            let session = auth.get("session").unwrap().as_str().unwrap();
+            client.header(
+                COOKIE,
+                format!(".SFCommunity={token}; session_APP={session}"),
+            )
+        } else {
+            client
+        }
+    }
+}
+
+impl Proxy {
     pub fn is_authenticated(&self) -> bool {
         if let Some(value) = self.cache.get("auth") {
             let map = value.as_object().unwrap();
-            if !(map.contains_key(".SFCommunity") && map.contains_key("session_APP")) {
+            if !(map.contains_key("token") && map.contains_key("session")) {
                 return false;
             }
             let expires = map.get("expires").unwrap().as_u64().unwrap();
@@ -131,20 +157,14 @@ impl Proxy {
             return Some("Authentication is already done".to_string());
         }
 
-        let client = Client::new();
-
-        let url = format!("{}/sessions", consts::APIPREFIX);
         let secrets = json!({
             "username": account,
             "password": password,
         });
 
-        let mut headers = self.default_headers();
-        headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
-
-        let resp = client
-            .post(url)
-            .headers(headers)
+        let resp = self
+            .request(Method::POST, "/sessions")
+            .header(CONTENT_TYPE, "application/json")
             .body(secrets.to_string())
             .send()
             .unwrap();
@@ -181,12 +201,19 @@ impl Proxy {
         let mut auth_expires = u64::MAX;
         for key in vec![".SFCommunity", "session_APP"] {
             assert!(cookies.contains_key(key));
-            let (expires, value) = cookies.get(key).unwrap();
+            let (expires, _) = cookies.get(key).unwrap();
             if expires < &auth_expires {
                 auth_expires = expires.clone();
             }
-            auth.insert(key.to_string(), value.to_string());
         }
+        auth.insert(
+            "token".to_string(),
+            cookies.get(".SFCommunity").unwrap().1.to_string(),
+        );
+        auth.insert(
+            "session".to_string(),
+            cookies.get("session_APP").unwrap().1.to_string(),
+        );
         auth.insert("account".to_string(), account.to_string());
         auth.insert("password".to_string(), password.to_string());
 
@@ -206,5 +233,22 @@ impl Proxy {
         let authenticated = self.is_authenticated();
         self.cache.as_object_mut().unwrap().remove("auth");
         authenticated
+    }
+
+    pub fn profile(&self) -> Result<serde_json::Map<String, Value>> {
+        if self.is_authenticated() {
+            let resp = self.request(Method::GET, "/user").send().unwrap();
+            let result: Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+            let data = result
+                .as_object()
+                .unwrap()
+                .get("data")
+                .unwrap()
+                .as_object()
+                .unwrap();
+            Ok(data.to_owned())
+        } else {
+            Err(Error::msg(format!("authentication required")))
+        }
     }
 }
