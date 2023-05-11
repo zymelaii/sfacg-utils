@@ -10,9 +10,6 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
-use crate::consts::APIPREFIX;
-
-use super::api::*;
 use super::consts;
 use super::encrypt::*;
 
@@ -111,8 +108,8 @@ impl Proxy {
     }
 }
 
-impl AuthApi for Proxy {
-    fn is_authenticated(&self) -> bool {
+impl Proxy {
+    pub fn is_authenticated(&self) -> bool {
         if let Some(value) = self.cache.get("auth") {
             let map = value.as_object().unwrap();
             if !(map.contains_key(".SFCommunity") && map.contains_key("session_APP")) {
@@ -129,14 +126,14 @@ impl AuthApi for Proxy {
         }
     }
 
-    fn login(&mut self, account: &str, password: &str) -> Option<String> {
+    pub fn login(&mut self, account: &str, password: &str) -> Option<String> {
         if self.is_authenticated() {
             return Some("Authentication is already done".to_string());
         }
 
         let client = Client::new();
 
-        let url = format!("{}/sessions", APIPREFIX);
+        let url = format!("{}/sessions", consts::APIPREFIX);
         let secrets = json!({
             "username": account,
             "password": password,
@@ -155,7 +152,7 @@ impl AuthApi for Proxy {
         if resp.status() != 200 {
             let resp: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
             return if let Some(status) = resp.get("status") {
-                Some(status.get("msg").unwrap().to_string())
+                Some(status.get("msg").unwrap().as_str().unwrap().to_string())
             } else {
                 Some(resp.to_string())
             };
@@ -205,7 +202,7 @@ impl AuthApi for Proxy {
         None
     }
 
-    fn logout(&mut self) -> bool {
+    pub fn logout(&mut self) -> bool {
         let authenticated = self.is_authenticated();
         self.cache.as_object_mut().unwrap().remove("auth");
         authenticated
