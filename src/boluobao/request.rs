@@ -47,7 +47,7 @@ impl Proxy {
         let prefix = consts::APIPREFIX;
         let client = Client::new();
         let client = client
-            .request(method, format!("{prefix}/{api}"))
+            .request(method, format!("{prefix}{api}"))
             .headers(self.default_headers());
         if self.is_authenticated() {
             let value = self.load("auth").unwrap().to_owned();
