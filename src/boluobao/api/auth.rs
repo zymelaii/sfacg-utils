@@ -118,7 +118,7 @@ impl Proxy {
         if authenticated {
             let value = self.load_mut("auth").unwrap();
             let auth = serde_json::from_value::<AuthStatus>(value.to_owned()).unwrap();
-            let (_, index, _) = auth.status;
+            let index = auth.status.1;
             value
                 .as_object_mut()
                 .unwrap()

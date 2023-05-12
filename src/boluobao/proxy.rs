@@ -1,7 +1,7 @@
 use super::consts;
 use crate::Value;
 
-use anyhow::{Error, Result};
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
 use uuid::Uuid;
@@ -47,10 +47,7 @@ impl ProxyBuilder {
                 cache: Map::<String, Value>::new(),
             })
         } else {
-            Err(Error::msg(format!(
-                "invalid app version: {}",
-                config.version
-            )))
+            bail!("invalid app version: {}", config.version);
         }
     }
 

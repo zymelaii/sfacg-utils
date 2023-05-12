@@ -10,9 +10,14 @@ pub use reqwest::{
 };
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+pub fn timestamp() -> Duration {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
+}
+
 impl Proxy {
+    #[inline]
     pub fn timestamp() -> Duration {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
+        timestamp()
     }
 
     fn user_agent(&self) -> String {
@@ -47,7 +52,7 @@ impl Proxy {
         if self.is_authenticated() {
             let value = self.load("auth").unwrap().to_owned();
             let auth = serde_json::from_value::<AuthStatus>(value).unwrap();
-            let (_, index, _) = auth.status;
+            let index = auth.status.1;
             let credential = &auth.credentials[index];
             client.header(
                 COOKIE,
