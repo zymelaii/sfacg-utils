@@ -1,5 +1,5 @@
 use super::types;
-use crate::{request::*, Proxy, Value};
+use crate::{request::*, unpack_sfresp, Proxy, Value};
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -42,9 +42,9 @@ impl Proxy {
         }
     }
 
-    pub fn login(&mut self, account: &str, password: &str) -> Option<String> {
+    pub fn login(&mut self, account: &str, password: &str) -> Result<Option<String>> {
         if self.is_authenticated() {
-            return Some("Authentication is already done".to_string());
+            return Ok(Some("Authentication is already done".to_string()));
         }
 
         let secrets = json!({
@@ -56,16 +56,16 @@ impl Proxy {
             .request(Method::POST, "/sessions")
             .header(CONTENT_TYPE, "application/json")
             .body(secrets.to_string())
-            .send()
-            .unwrap();
+            .send()?;
 
         if resp.status() != 200 {
-            let resp: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-            return if let Some(status) = resp.get("status") {
-                Some(status.get("msg").unwrap().as_str().unwrap().to_string())
+            let resp = resp.text()?.parse::<Value>()?;
+            let msg = if let Some(status) = resp.get("status") {
+                status.get("msg").unwrap().as_str().unwrap().to_string()
             } else {
-                Some(resp.to_string())
+                resp.to_string()
             };
+            return Ok(Some(msg));
         }
 
         let re = regex::Regex::new(r"^(?<key>[^=]+)=(?<value>[^;]+).*expires=(?<expires>[^;]+)")
@@ -110,7 +110,7 @@ impl Proxy {
 
         self.store("auth", serde_json::to_value(auth).unwrap());
 
-        None
+        Ok(None)
     }
 
     pub fn logout(&mut self) -> bool {
@@ -133,17 +133,7 @@ impl Proxy {
 
     pub fn profile(&self) -> Result<types::User> {
         if self.is_authenticated() {
-            let resp = self.request(Method::GET, "/user").send()?;
-            let status_code = resp.status();
-            let data = serde_json::from_str::<Value>(&resp.text()?)?;
-            if status_code == 200 {
-                let data = data.as_object().unwrap().get("data").unwrap().to_owned();
-                Ok(serde_json::from_value(data)?)
-            } else {
-                let data = data.as_object().unwrap().get("status").unwrap().to_owned();
-                let status = serde_json::from_value::<types::Status>(data)?;
-                bail!(status.msg.unwrap());
-            }
+            unpack_sfresp!(self.request(Method::GET, "/user").send()?);
         } else {
             bail!("authentication required");
         }

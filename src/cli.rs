@@ -190,7 +190,7 @@ pub fn handle_auth_login(matches: &clap::ArgMatches) -> Result<()> {
     }
 
     let mut proxy = Proxy::default();
-    if let Some(msg) = proxy.login(&account, &password) {
+    if let Some(msg) = proxy.login(&account, &password)? {
         let hint = "Authentication failed";
         eprintln!("{}: {msg}", hint.bold().red());
         bail!(hint);
@@ -228,7 +228,7 @@ pub fn handle_auth_status(matches: &clap::ArgMatches) -> Result<()> {
             if users.contains(user) {
                 let (account, password) = get_secrets_of(&user).unwrap();
                 let mut proxy = Proxy::default();
-                proxy.login(&account, &password);
+                proxy.login(&account, &password)?;
                 println!("{} {:#?}", user.bold(), proxy.profile().unwrap());
             } else {
                 let hint = "Unknown user";
