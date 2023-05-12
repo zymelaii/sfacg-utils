@@ -1,8 +1,9 @@
-pub mod api;
-pub mod consts;
 mod encrypt;
 mod proxy;
-mod request;
 
-pub use proxy::*;
-pub use uuid::Uuid;
+pub mod api;
+pub mod consts;
+pub mod request;
+
+pub use encrypt::*;
+pub use proxy::Proxy;

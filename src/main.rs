@@ -92,7 +92,7 @@ fn cleanup_auth() {
     );
 }
 
-fn update_auth(profile: &sfutils::types::User, password: &str) -> Result<String> {
+fn update_auth(profile: &sfutils::api::types::User, password: &str) -> Result<String> {
     let mut data = local_storage()?;
     let mut auth = toml::Table::new();
 

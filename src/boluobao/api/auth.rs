@@ -1,7 +1,5 @@
-use super::{
-    super::{proxy::*, request::*},
-    types,
-};
+use super::types;
+use crate::{request::*, Proxy, Value};
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};

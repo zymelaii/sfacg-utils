@@ -1,7 +1,9 @@
 use super::consts;
+use crate::Value;
+
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
-pub use serde_json::{Map, Value};
+use serde_json::Map;
 use uuid::Uuid;
 
 struct Config {

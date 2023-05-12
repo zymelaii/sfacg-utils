@@ -1,4 +1,4 @@
-use super::{api::auth::AuthStatus, consts, encrypt::*, Proxy};
+use super::{api::auth::AuthStatus, *};
 
 use reqwest::{
     blocking::{Client, RequestBuilder},
@@ -15,7 +15,7 @@ impl Proxy {
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
     }
 
-    pub fn user_agent(&self) -> String {
+    fn user_agent(&self) -> String {
         format!(
             "boluobao/{}/{}/{}",
             self.get_app_version(),
@@ -24,7 +24,7 @@ impl Proxy {
         )
     }
 
-    pub fn default_headers(&self) -> HeaderMap {
+    fn default_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         let accept = "application/vnd.sfacg.api+json;version=1";
         let security = get_sfsecurity(&self.get_app_version(), &self.get_device_token());
