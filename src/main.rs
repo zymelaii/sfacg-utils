@@ -1,6 +1,6 @@
 use sfutils::Proxy;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{arg, Command};
 use colored::*;
 use directories::ProjectDirs;
@@ -92,22 +92,26 @@ fn cleanup_auth() {
     );
 }
 
-fn update_auth(profile: &serde_json::Value, password: &str) -> Result<String> {
+fn update_auth(profile: &sfutils::types::User, password: &str) -> Result<String> {
     let mut data = local_storage()?;
     let mut auth = toml::Table::new();
 
-    let user = profile.get("nickName").unwrap().as_str().unwrap();
-    let email = profile.get("email").unwrap().as_str().unwrap();
-    let phone = profile.get("phoneNum").unwrap().as_str().unwrap();
-
-    auth.insert("email".to_string(), toml::Value::String(email.to_string()));
-    auth.insert("phone".to_string(), toml::Value::String(phone.to_string()));
     auth.insert(
-        "password".to_string(),
-        toml::Value::String(password.to_string()),
+        "email".to_string(),
+        toml::Value::from(profile.email.to_owned()),
     );
 
-    data.insert(user.to_string(), toml::Value::from(auth));
+    auth.insert(
+        "phone".to_string(),
+        toml::Value::from(profile.phoneNum.to_owned()),
+    );
+
+    auth.insert(
+        "password".to_string(),
+        toml::Value::from(password.to_owned()),
+    );
+
+    data.insert(profile.nickName.to_owned(), toml::Value::from(auth));
 
     let data_file = ProjectDirs::from("", "", "sfutils")
         .unwrap()
@@ -115,7 +119,7 @@ fn update_auth(profile: &serde_json::Value, password: &str) -> Result<String> {
         .join("auth.toml");
     fs::write(data_file, data.to_string())?;
 
-    Ok(user.to_string())
+    Ok(profile.nickName.to_owned())
 }
 
 fn remove_auth(users: &Vec<String>) -> Result<()> {
@@ -141,11 +145,11 @@ fn get_secrets_of(username: &str) -> Result<(String, String)> {
             let password = value.get("password").unwrap().as_str().unwrap().to_string();
             Ok((account, password))
         }
-        None => Err(anyhow::Error::msg("unknown user")),
+        None => bail!("unknown user"),
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let matches = cli().get_matches();
 
     match matches.subcommand() {
@@ -159,11 +163,9 @@ fn main() {
                             (account, password) = secrets;
                         }
                         Err(_) => {
-                            eprintln!(
-                                "{}: {username}",
-                                "Unknown user to be authenticated".bold().red()
-                            );
-                            return;
+                            let hint = "Unknown user to be authenticated";
+                            eprintln!("{}: {username}", hint.bold().red());
+                            bail!(hint.to_lowercase());
                         }
                     }
                 } else {
@@ -173,12 +175,14 @@ fn main() {
 
                 let mut proxy = Proxy::default();
                 if let Some(msg) = proxy.login(&account, &password) {
-                    eprintln!("{}: {msg}", "Authentication failed".bold().red());
-                    return;
+                    let hint = "Authentication failed";
+                    eprintln!("{}: {msg}", hint.bold().red());
+                    bail!(hint);
                 } else if let Ok(profile) = proxy.profile() {
-                    let profile = serde_json::Value::from(profile);
                     let user = update_auth(&profile, &password).unwrap();
                     println!("Logged in to boluobao as {}", user.bold());
+                } else {
+                    println!("{proxy:#?}");
                 }
             }
             Some(("logout", matches)) => {
@@ -204,8 +208,9 @@ fn main() {
                         proxy.login(&account, &password);
                         println!("{} {:#?}", user.bold(), proxy.profile().unwrap());
                     } else {
-                        eprintln!("{}: {}", "Unknown user".bold().red(), user);
-                        return;
+                        let hint = "Unknown user";
+                        eprintln!("{}: {}", hint.bold().red(), user);
+                        bail!(hint);
                     }
                 }
                 _ => unreachable!(),
@@ -214,5 +219,7 @@ fn main() {
             _ => unreachable!(),
         },
         _ => unreachable!(),
-    }
+    };
+
+    Ok(())
 }

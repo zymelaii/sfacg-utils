@@ -15,4 +15,5 @@ dateparser = "0.2.0"
 clap = "4.2.7"
 colored = "2.0.0"
 directories = "5.0.1"
-toml = "0.7.3"
+toml = { version = "0.7.3" }
+serde = { version = "1.0.163", features = ["derive"] }
