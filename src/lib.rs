@@ -1,6 +1,5 @@
 mod boluobao;
 pub mod cli;
-pub mod storage;
 
 pub use boluobao::*;
 
