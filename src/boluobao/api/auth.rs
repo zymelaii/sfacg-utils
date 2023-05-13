@@ -1,5 +1,5 @@
 use super::types;
-use crate::{request::*, unpack_sfresp, Proxy, Value};
+use crate::{consts, request::*, unpack_sfresp, Proxy, Value};
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -131,9 +131,12 @@ impl Proxy {
         authenticated
     }
 
-    pub fn profile(&self) -> Result<types::User> {
+    pub fn profile(&self) -> Result<types::UserPrivate> {
         if self.is_authenticated() {
-            unpack_sfresp!(self.request(Method::GET, "/user").send()?);
+            unpack_sfresp!(self
+                .request(Method::GET, "/user")
+                .query(&[("expand", consts::FULLEXPAND["user/private"])])
+                .send()?);
         } else {
             bail!("authentication required");
         }

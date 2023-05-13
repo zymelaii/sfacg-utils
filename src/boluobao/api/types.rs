@@ -11,18 +11,84 @@ pub struct Status {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
-pub struct User {
-    pub accountId: u32,
+pub struct ChangeNickNameInfo {
+    pub canChange: bool,
+    pub nextChangeNeedDays: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct VipInfo {
+    pub discount: i32,
+    pub nextDiscount: i32,
+    pub level: usize,
+    pub nextLevel: usize,
+    pub nextDiscountLevel: usize,
+    pub nextLevelPoint: usize,
+    pub nextDiscountLevelPoint: usize,
+    pub point: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct UserPrivateExpand {
+    pub changeNickNameInfo: Option<ChangeNickNameInfo>,
+    pub hasActiveUnlockChapWithAd: Option<bool>,
+    pub hasOrderChapWithFireMoney: Option<bool>,
+    pub hasOrderedVipChaps: Option<bool>,
+    pub hasPaidFirstTime: Option<bool>,
+    pub hasUnlockChapWithAd: Option<bool>,
+    pub isRealNameAuth: Option<bool>,
+    pub redpacketCode: Option<String>,
+    pub useWelfaresys: Option<bool>,
+    pub usedRedpacketCode: Option<String>,
+    pub vipInfo: Option<VipInfo>,
+    pub welfareCoin: Option<i32>,
+    pub welfareMoney: Option<f32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct UserPrivate {
+    pub accountId: i32,
+    pub nickName: String,
+    pub userName: String,
     pub countryCode: u32,
     pub avatar: String,
     pub email: String,
     pub fireCoin: i32,
     pub isAuthor: bool,
-    pub nickName: String,
     pub phoneNum: String,
     pub registerDate: String,
     pub roleName: String,
+    pub expand: Option<UserPrivateExpand>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct UserExpand {
+    pub avatar: Option<String>,
+    pub introduction: Option<String>,
+    pub followNum: Option<usize>,
+    pub youblock: Option<bool>,
+    pub youfollow: Option<bool>,
+    pub followyou: Option<bool>,
+    pub verifyInfo: Option<String>,
+    pub verifyType: Option<i32>,
+    pub avatarFrame: Option<String>,
+    pub backgroundPic: Option<String>,
+    pub bigAvatar: Option<String>,
+    pub fansNum: Option<usize>,
+    pub widgets: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct User {
+    pub accountId: i32,
+    pub nickName: String,
     pub userName: String,
+    pub expand: Option<UserExpand>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -108,38 +174,45 @@ pub struct Chapter {
     pub novelId: i32,
     pub volumeId: i32,
     pub chapId: i32,
+
     pub title: String,
-    pub isVip: bool,
+    pub ntitle: String,
+
+    pub sno: f32,
     pub chapOrder: i32,
+
     pub rowNum: usize,
     pub charCount: usize,
-    pub AddTime: String,
-    pub updateTime: Option<String>,
+
+    pub isVip: bool,
     pub isRubbish: bool,
     pub auditStatus: i32,
-    pub chapterOriginFireMoney: usize,
-    pub content: Option<String>,
+
+    pub AddTime: String,
+    pub updateTime: Option<String>,
+
     pub needFireMoney: usize,
     pub originNeedFireMoney: usize,
+    pub chapterOriginFireMoney: usize,
     pub canUnlockWithAd: bool,
-    pub ntitle: String,
-    pub sno: f32,
+
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct Volume {
-    pub title: String,
     pub volumeId: i32,
-    pub chapterList: Vec<Chapter>,
     pub sno: f32,
+    pub title: String,
+    pub chapterList: Vec<Chapter>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct Catalogue {
-    pub lastUpdateTime: String,
     pub novelId: i32,
+    pub lastUpdateTime: String,
     pub volumeList: Vec<Volume>,
 }
 
@@ -186,6 +259,15 @@ pub struct Pocket {
     pub pocketId: i32,
     pub typeId: i32,
     pub expand: Option<PocketExpand>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct SignInfo {
+    continueNum: i32,
+    day: i32,
+    month: i32,
+    year: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -4,6 +4,7 @@ pub mod favorites;
 pub mod novel;
 pub mod search;
 pub mod types;
+pub mod user;
 
 #[macro_export]
 macro_rules! unpack_sfresp {

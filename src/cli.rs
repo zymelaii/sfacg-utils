@@ -113,7 +113,7 @@ fn cleanup_auth() {
     );
 }
 
-fn update_auth(profile: &api::types::User, password: &str) -> Result<String> {
+fn update_auth(profile: &api::types::UserPrivate, password: &str) -> Result<String> {
     let mut data = local_storage()?;
     let mut auth = toml::Table::new();
 

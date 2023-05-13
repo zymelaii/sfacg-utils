@@ -11,5 +11,7 @@ pub const APPKEYS: Map<&'static str, &'static str> = phf_map! {
 pub const FULLEXPAND: Map<&'static str, &'static str> = phf_map! {
     "novels" => "chapterCount,bigBgBanner,bigNovelCover,typeName,intro,fav,ticket,pointCount,tags,sysTags,signlevel,discount,discountExpireDate,totalNeedFireMoney,rankinglist,originTotalNeedFireMoney,firstchapter,latestchapter,latestcommentdate,essaytag,auditCover,preOrderInfo,customTag,topic,unauditedCustomtag,homeFlag,isbranch",
     "novels/dirs" => "originNeedFireMoney",
+    "user" => "introduction,bigAvatar,avatar,backgroundPic,fansNum,followNum,followyou,youfollow,verifyType,verifyInfo,avatarFrame,youblock,widgets",
+    "user/private" => "changeNickNameInfo,hasActiveUnlockChapWithAd,hasOrderChapWithFireMoney,hasOrderedVipChaps,hasPaidFirstTime,hasUnlockChapWithAd,isRealNameAuth,redpacketCode,usedRedpacketCode,useWelfaresys,vipInfo,welfareCoin,welfareMoney",
     "user/pockets" => "novels",
 };
