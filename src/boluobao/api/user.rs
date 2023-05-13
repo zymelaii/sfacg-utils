@@ -22,10 +22,4 @@ impl Proxy {
             .query(&[("expand", consts::FULLEXPAND["user"])])
             .send()?);
     }
-
-    pub fn sign_info(&self) -> Result<Vec<types::SignInfo>> {
-        unpack_sfresp!(self
-            .request(Method::GET, &format!("/user/signInfo"))
-            .send()?);
-    }
 }

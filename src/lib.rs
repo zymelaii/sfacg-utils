@@ -1,4 +1,5 @@
 mod boluobao;
+mod internal;
 pub mod cli;
 
 pub use boluobao::*;

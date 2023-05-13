@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+pub enum Type {
+    Comic(),
+    Novel,
+    Album,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct Status {
@@ -244,7 +250,44 @@ pub struct NovelRef {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
+pub struct ComicRef {
+    pub authorId: i32,
+    pub bgBanner: String,
+    pub comicCover: String,
+    pub comicName: String,
+    pub folderName: String,
+    pub isFinished: bool,
+    pub isSticky: bool,
+    pub lastUpdateTime: String,
+    pub latestChapterTitle: String,
+    pub point: f32,
+    pub signStatus: String,
+    pub stickyDateTime: Option<String>,
+    pub typeId: i32,
+    pub viewTimes: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct AlbumRef {
+    pub authorId: i32,
+    pub novelId: i32,
+    pub albumId: i32,
+    pub name: String,
+    pub latestChapterId: i32,
+    pub lastUpdateTime: String,
+    pub coverSmall: String,
+    pub coverMedium: String,
+    pub coverBig: String,
+    pub isSticky: bool,
+    pub stickyDateTime: Option<String>,
+    pub visitTimes: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct PocketExpand {
+    pub comics: Option<Vec<ComicRef>>,
     pub novels: Option<Vec<NovelRef>>,
 }
 
@@ -264,10 +307,10 @@ pub struct Pocket {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct SignInfo {
-    continueNum: i32,
-    day: i32,
-    month: i32,
-    year: i32,
+    year: i32,        //<! 签到年
+    month: i32,       //<! 签到月
+    day: i32,         //<! 签到日
+    continueNum: i32, //<! 连续签到的天数
 }
 
 #[derive(Debug, Serialize, Deserialize)]
