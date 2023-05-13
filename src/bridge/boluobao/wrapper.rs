@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use super::types;
+use crate::boluobao::api::types;
 use crate::internal::*;
 
 impl types::Pocket {
@@ -101,6 +101,31 @@ impl types::Novel {
             is_finished: self.isFinish,
             last_update_time: to_timestamp(&self.lastUpdateTime)?,
             creation_time: to_timestamp(&self.addTime)?,
+        })
+    }
+}
+
+impl types::Chapter {
+    #[inline]
+    pub fn parse(self) -> Result<Chapter> {
+        let creation = to_timestamp(&self.AddTime)?;
+        Ok(Chapter {
+            novel_id: self.novelId,
+            volume_id: self.volumeId,
+            id: self.chapId,
+            title: self.title,
+            order: self.chapOrder as usize,
+            total_chars: self.charCount,
+            creation_time: creation,
+            update_time: if self.updateTime.is_some() {
+                to_timestamp(&self.updateTime.unwrap())?
+            } else {
+                creation
+            },
+            is_free: !self.isVip,
+            price: self.needFireMoney,
+            origin_price: self.chapterOriginFireMoney,
+            content: self.content,
         })
     }
 }

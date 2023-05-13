@@ -2,6 +2,30 @@
 
 use super::*;
 
+#[derive(Debug)]
+pub struct Chapter {
+    pub novel_id: Id,             //<! 小说 ID
+    pub volume_id: Id,            //<! 卷 ID
+    pub id: Id,                   //<! 章节 ID
+    pub title: String,            //<! 标题
+    pub order: usize,             //<! 章节序号
+    pub total_chars: usize,       //<! 总字数
+    pub creation_time: Timestamp, //<! 创建时间
+    pub update_time: Timestamp,   //<! 最后更新时间
+    pub is_free: bool,            //<! 是否是免费章节
+    pub price: usize,             //<! 现价
+    pub origin_price: usize,      //<! 原价
+    pub content: Option<String>,  //<! 章节内容
+}
+
+pub struct Volume {
+    pub novel_id: Id,           //<! 小说 ID
+    pub id: Id,                 //<! 卷 ID
+    pub title: String,          //<! 卷名
+    pub order: usize,           //<! 卷序号
+    pub chapters: Vec<Chapter>, //<! 章节列表
+}
+
 /// TODO: 添加价格信息
 ///
 /// TODO: 添加小说标签信息

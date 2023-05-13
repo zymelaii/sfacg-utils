@@ -1,6 +1,7 @@
 mod boluobao;
-mod internal;
+pub mod bridge;
 pub mod cli;
+mod internal;
 
 pub use boluobao::*;
 pub use internal::*;
