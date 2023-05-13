@@ -43,12 +43,24 @@ impl types::UserPrivate {
     #[inline]
     pub fn parse(self) -> Result<UserPrivate> {
         let expand = self.expand.unwrap();
+        let vip_info = expand.vipInfo.unwrap();
+        let vip = VipInfo {
+            point: vip_info.point,
+            level: vip_info.level,
+            next_level: vip_info.nextLevel,
+            point_of_next_level: vip_info.nextLevelPoint,
+            discount: vip_info.discount as usize,
+            next_discount: vip_info.nextDiscount as usize,
+            level_of_next_discount: vip_info.nextDiscountLevel,
+            point_of_next_discount: vip_info.nextDiscountLevelPoint as usize,
+        };
         Ok(UserPrivate {
             id: self.accountId,
             area_code: self.countryCode,
             phone: self.phoneNum,
             email: self.email,
             is_author: self.isAuthor,
+            vip: vip,
             registration_time: to_timestamp(&self.registerDate)?,
             banlance: 0, //<! FIXME
             vouchers: 0, //<! FIXME
