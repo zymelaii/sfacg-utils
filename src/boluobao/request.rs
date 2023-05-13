@@ -65,4 +65,22 @@ impl Proxy {
             client
         }
     }
+
+    pub fn request_with(
+        &self,
+        method: Method,
+        api: &str,
+        token: &str,
+        session: &str,
+    ) -> RequestBuilder {
+        let prefix = consts::APIPREFIX;
+        let client = Client::new();
+        let client = client
+            .request(method, format!("{prefix}{api}"))
+            .headers(self.default_headers());
+        client.header(
+            COOKIE,
+            format!(".SFCommunity={token}; session_APP={session}"),
+        )
+    }
 }
