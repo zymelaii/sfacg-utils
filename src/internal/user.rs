@@ -2,6 +2,7 @@
 
 use super::*;
 
+#[derive(Debug)]
 pub struct User {
     pub id: Id,                  //<! 用户 ID
     pub uuid: String,            //<! 用户唯一标识码

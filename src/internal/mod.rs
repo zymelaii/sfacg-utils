@@ -2,11 +2,15 @@ use anyhow::Result;
 
 pub type Timestamp = i64;
 pub type Id = i32;
+
+#[derive(Debug)]
 pub enum Type {
     Comic,
     Novel,
     Album,
 }
+
+#[derive(Debug)]
 pub enum VerifyType {
     None(String),
 }
@@ -35,7 +39,10 @@ impl VerifyType {
 
 #[inline]
 pub fn to_timestamp(date: &str) -> Result<Timestamp> {
-    Ok(date.parse::<dateparser::DateTimeUtc>()?.0.timestamp())
+    Ok(format!("{date}Z")
+        .parse::<dateparser::DateTimeUtc>()?
+        .0
+        .timestamp())
 }
 
 mod album;

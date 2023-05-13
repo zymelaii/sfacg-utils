@@ -14,6 +14,7 @@ use super::*;
 ///
 /// TODO: 增加余额信息（火卷）
 
+#[derive(Debug)]
 pub struct VipInfo {
     pub point: usize,                  //<! 当前点数
     pub level: usize,                  //<! 当前等级
@@ -25,6 +26,7 @@ pub struct VipInfo {
     pub point_of_next_discount: usize, //<! 下一个折扣点所需的总点数
 }
 
+#[derive(Debug)]
 pub struct UserPrivate {
     pub id: Id,                       //<! 用户 ID
     pub area_code: u32,               //<! 手机区号

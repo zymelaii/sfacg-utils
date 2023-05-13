@@ -6,14 +6,22 @@ use crate::internal::*;
 impl types::Pocket {
     #[inline]
     pub fn parse(self) -> Result<Favoirtes> {
+        let r#type = Type::from(self.typeId);
+        let expand = self.expand.unwrap();
+        let refs: Vec<Id> = match r#type {
+            Type::Comic => expand.comics.unwrap().iter().map(|e| e.comicId).collect(),
+            Type::Novel => expand.novels.unwrap().iter().map(|e| e.novelId).collect(),
+            Type::Album => expand.albums.unwrap().iter().map(|e| e.albumId).collect(),
+        };
         Ok(Favoirtes {
             id: self.pocketId,
             owner_id: self.accountId,
             name: self.name,
-            r#type: Type::from(self.typeId),
+            r#type: r#type,
             creation_time: to_timestamp(&self.createTime)?,
             modifiable: self.canModify,
             is_full: self.isFull,
+            refs: refs,
         })
     }
 }
@@ -65,6 +73,34 @@ impl types::UserPrivate {
             banlance: 0, //<! FIXME
             vouchers: 0, //<! FIXME
             tokens: expand.welfareCoin.unwrap() as usize,
+        })
+    }
+}
+
+impl types::Novel {
+    #[inline]
+    pub fn parse(self) -> Result<Novel> {
+        let expand = self.expand.unwrap();
+        Ok(Novel {
+            name: self.novelName,
+            id: self.novelId.unwrap(),
+            author: self.authorName,
+            author_id: self.authorId,
+            r#type: expand.typeName.unwrap(),
+            intro: expand.intro.unwrap(),
+            sign_status: self.signStatus,
+            sign_level: expand.signLevel.unwrap(),
+            total_chars: self.charCount,
+            total_chapters: expand.chapterCount.unwrap(),
+            total_views: self.viewTimes,
+            total_likes: expand.fav.unwrap(),
+            total_favorites: self.markCount,
+            total_tickets: expand.ticket.unwrap(),
+            cover: expand.bigNovelCover.unwrap(),
+            banner: expand.bigBgBanner.unwrap(),
+            is_finished: self.isFinish,
+            last_update_time: to_timestamp(&self.lastUpdateTime)?,
+            creation_time: to_timestamp(&self.addTime)?,
         })
     }
 }

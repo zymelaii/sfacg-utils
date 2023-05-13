@@ -5,10 +5,14 @@ use anyhow::Result;
 
 impl Proxy {
     pub fn novel_info(&self, novel_id: i32) -> Result<types::Novel> {
-        unpack_sfresp!(self
-            .request(Method::GET, &format!("/novels/{novel_id}"))
-            .query(&[("expand", consts::FULLEXPAND["novels"])])
-            .send()?);
+        let mut novel = || -> Result<types::Novel> {
+            unpack_sfresp!(self
+                .request(Method::GET, &format!("/novels/{novel_id}"))
+                .query(&[("expand", consts::FULLEXPAND["novels"])])
+                .send()?);
+        }()?;
+        novel.novelId = Some(novel_id);
+        Ok(novel)
     }
 
     pub fn catalogue_of(&self, novel_id: i32) -> Result<types::Catalogue> {

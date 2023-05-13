@@ -157,6 +157,7 @@ pub struct NovelExpand {
 pub struct Novel {
     pub addTime: String,
     pub allowDown: bool,
+    pub novelId: Option<i32>,
     pub authorId: i32,
     pub authorName: String,
     pub bgBanner: String,
@@ -254,6 +255,7 @@ pub struct ComicRef {
     pub authorId: i32,
     pub bgBanner: String,
     pub comicCover: String,
+    pub comicId: i32,
     pub comicName: String,
     pub folderName: String,
     pub isFinished: bool,
@@ -261,6 +263,7 @@ pub struct ComicRef {
     pub lastUpdateTime: String,
     pub latestChapterTitle: String,
     pub point: f32,
+    pub markDateTime: String,
     pub signStatus: String,
     pub stickyDateTime: Option<String>,
     pub typeId: i32,
@@ -289,6 +292,7 @@ pub struct AlbumRef {
 pub struct PocketExpand {
     pub comics: Option<Vec<ComicRef>>,
     pub novels: Option<Vec<NovelRef>>,
+    pub albums: Option<Vec<AlbumRef>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -340,7 +344,7 @@ pub struct NovelRecord {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct SearchResult {
-    pub albums: Vec<serde_json::Value>,
-    pub comics: Vec<serde_json::Value>,
+    pub albums: Vec<AlbumRef>,
+    pub comics: Vec<ComicRef>,
     pub novels: Vec<NovelRecord>,
 }
