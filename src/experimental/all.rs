@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub type Timestamp = u64;
 pub type Id = i32;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Client {
     version: String,
     channel: String,
@@ -33,6 +33,7 @@ pub struct PrivateCredential {
     is_broken: bool,       //<! 是否损坏
 }
 
+#[derive(Debug)]
 pub struct Host {
     client: Client,
     major_auth: Id,
@@ -364,6 +365,23 @@ impl Host {
 }
 
 impl Host {
+    pub fn from_local(path: &str) -> Result<Self> {
+        let bytes = std::fs::read(path)?;
+        type ResultType = HashMap<String, PrivateCredential>;
+        let data = toml::from_str::<ResultType>(&String::from_utf8(bytes)?)?;
+        let credentials: Vec<PrivateCredential> = data.into_values().collect();
+        let mut resp = Self::new()?;
+        let timestamp = Client::timestamp()?.as_secs();
+        resp.credentials = credentials
+            .into_iter()
+            .filter(|e| !e.is_broken && !e.is_dirty && e.expires > timestamp)
+            .collect();
+        if resp.credentials.len() > 0 {
+            resp.major_auth = resp.credentials.get(0).unwrap().owner_id;
+        }
+        Ok(resp)
+    }
+
     pub fn dump_to_local(&self, path: &str) -> Result<()> {
         use std::io::Write;
         let mut file = std::fs::OpenOptions::new()
