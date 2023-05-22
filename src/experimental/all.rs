@@ -296,6 +296,58 @@ impl Host {
             is_broken: false,
         })
     }
+
+    fn _novel_info(&self, novel_id: Id) -> Result<types::NovelInfo> {
+        use serde_json::Value;
+
+        let resp = self
+            .client
+            .as_guest()
+            .get(&format!("/novels/{novel_id}"))?
+            .send()?;
+
+        let status_code = resp.status();
+        let data = resp.text()?.parse::<Value>()?;
+
+        if status_code != StatusCode::OK {
+            let msg = data
+                .get("status")
+                .ok_or(Error::msg("bad-formed api request"))?
+                .get("msg")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string();
+            bail!(msg);
+        }
+
+        let data = data.get("data").unwrap().to_owned();
+        let info = serde_json::from_value::<types::_NovelInfo>(data)?;
+
+        let add_time = format!("{}Z", info.addTime)
+            .parse::<dateparser::DateTimeUtc>()?
+            .0
+            .timestamp() as Timestamp;
+
+        let last_update_time = format!("{}Z", info.lastUpdateTime)
+            .parse::<dateparser::DateTimeUtc>()?
+            .0
+            .timestamp() as Timestamp;
+
+        Ok(types::NovelInfo {
+            r#type: info.typeId,
+            sign_status: info.signStatus,
+            id: novel_id,
+            name: info.novelName,
+            author_id: info.authorId,
+            author: info.authorName,
+            total_chars: info.charCount,
+            finished: info.isFinish,
+            total_views: info.viewTimes,
+            add_time: add_time,
+            last_update_time: last_update_time,
+        })
+    }
 }
 
 impl Host {
@@ -317,6 +369,10 @@ impl Host {
             self.credentials.push(credential);
         }
         Ok(id)
+    }
+
+    pub fn novel_info(&self, novel_id: Id) -> Result<types::NovelInfo> {
+        Ok(self._novel_info(novel_id)?)
     }
 
     pub fn login(&mut self, id: Id, as_major: bool) -> Result<()> {
