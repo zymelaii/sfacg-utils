@@ -304,6 +304,7 @@ impl Host {
             .client
             .as_guest()
             .get(&format!("/novels/{novel_id}"))?
+            .query(&[("expand", consts::FULLEXPAND["novels"])])
             .send()?;
 
         let status_code = resp.status();
@@ -324,6 +325,8 @@ impl Host {
         let data = data.get("data").unwrap().to_owned();
         let info = serde_json::from_value::<types::_NovelInfo>(data)?;
 
+        let expand = info.expand.ok_or(Error::msg("missing expand data"))?;
+
         let add_time = format!("{}Z", info.addTime)
             .parse::<dateparser::DateTimeUtc>()?
             .0
@@ -341,9 +344,12 @@ impl Host {
             name: info.novelName,
             author_id: info.authorId,
             author: info.authorName,
+            brief: expand.intro.unwrap(),
+            cover: expand.bigNovelCover.unwrap(),
             total_chars: info.charCount,
-            finished: info.isFinish,
+            total_chapters: expand.chapterCount.unwrap(),
             total_views: info.viewTimes,
+            finished: info.isFinish,
             add_time: add_time,
             last_update_time: last_update_time,
         })

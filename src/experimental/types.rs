@@ -46,6 +46,28 @@ pub struct AuthInfo {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+pub struct _NovelInfoExpand {
+    pub intro: Option<String>,
+    pub signLevel: Option<String>,
+    pub chapterCount: Option<usize>,
+    pub auditCover: Option<String>,
+    pub bigBgBanner: Option<String>,
+    pub bigNovelCover: Option<String>,
+    pub customTag: Option<Vec<String>>,
+    pub discount: Option<f32>,
+    pub discountExpireDate: Option<String>,
+    pub fav: Option<usize>,
+    pub pointCount: Option<usize>,
+    pub tags: Option<Vec<String>>,
+    pub topic: Option<String>,
+    pub ticket: Option<usize>,
+    pub typeName: Option<String>,
+    pub originTotalNeedFireMoney: Option<usize>,
+    pub totalNeedFireMoney: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 pub struct _NovelInfo {
     pub typeId: usize,
     pub signStatus: String,
@@ -58,6 +80,7 @@ pub struct _NovelInfo {
     pub viewTimes: usize,
     pub addTime: String,
     pub lastUpdateTime: String,
+    pub expand: Option<_NovelInfoExpand>,
 }
 
 #[derive(Debug)]
@@ -68,9 +91,12 @@ pub struct NovelInfo {
     pub name: String,                //<! 小说名称
     pub author_id: Id,               //<! 作者 ID
     pub author: String,              //<! 作者名称
+    pub brief: String,               //<! 小说简介
+    pub cover: String,               //<! 小说封面
     pub total_chars: usize,          //<! 总字数
-    pub finished: bool,              //<! 是否完结
+    pub total_chapters: usize,       //<! 总章节数
     pub total_views: usize,          //<! 访问量
+    pub finished: bool,              //<! 是否完结
     pub add_time: Timestamp,         //<! 添加时间
     pub last_update_time: Timestamp, //<! 最近一次的更新时间
 }
