@@ -102,6 +102,7 @@ impl Client {
 }
 
 impl Client {
+    #[inline]
     pub fn timestamp() -> Result<std::time::Duration> {
         Ok(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?)
     }
@@ -170,30 +171,9 @@ impl Host {
     /// 获取登录状态
     fn _auth_info(&self, token: &str, session: &str) -> Result<types::AuthInfo> {
         let resp = self.client.with(token, session).get("/user")?.send()?;
-        let info = resp.text()?.parse::<Response<types::_AuthInfo>>()?.data()?;
-
-        let timestamp = format!("{}Z", info.registerDate)
-            .parse::<dateparser::DateTimeUtc>()?
-            .0
-            .timestamp() as Timestamp;
-
-        Ok(types::AuthInfo {
-            id: info.accountId,
-            device_id: self.client.device_id.to_owned(),
-            area_code: info.countryCode,
-            nickname: info.nickName,
-            phone: if info.phoneNum.is_empty() {
-                None
-            } else {
-                Some(info.phoneNum)
-            },
-            email: if info.email.is_empty() {
-                None
-            } else {
-                Some(info.email)
-            },
-            registration_time: timestamp,
-        })
+        let mut info = resp.text()?.parse::<Response<types::AuthInfo>>()?.data()?;
+        info.device_id = self.client.device_id.to_owned();
+        Ok(info)
     }
 
     /// 验证身份
@@ -267,41 +247,8 @@ impl Host {
             .client
             .as_guest()
             .get(&format!("/novels/{novel_id}"))?
-            .query(&[("expand", consts::FULLEXPAND["novels"])])
             .send()?;
-
-        let info = resp
-            .text()?
-            .parse::<Response<types::_NovelInfo>>()?
-            .data()?;
-        let expand = info.expand.ok_or(Error::msg("missing expand data"))?;
-
-        let add_time = format!("{}Z", info.addTime)
-            .parse::<dateparser::DateTimeUtc>()?
-            .0
-            .timestamp() as Timestamp;
-
-        let last_update_time = format!("{}Z", info.lastUpdateTime)
-            .parse::<dateparser::DateTimeUtc>()?
-            .0
-            .timestamp() as Timestamp;
-
-        Ok(types::NovelInfo {
-            r#type: info.typeId,
-            sign_status: info.signStatus,
-            id: novel_id,
-            name: info.novelName,
-            author_id: info.authorId,
-            author: info.authorName,
-            brief: expand.intro.unwrap(),
-            cover: expand.bigNovelCover.unwrap(),
-            total_chars: info.charCount,
-            total_chapters: expand.chapterCount.unwrap(),
-            total_views: info.viewTimes,
-            finished: info.isFinish,
-            add_time: add_time,
-            last_update_time: last_update_time,
-        })
+        Ok(resp.text()?.parse::<Response<types::NovelInfo>>()?.data()?)
     }
 }
 
@@ -312,7 +259,7 @@ impl Host {
             .iter()
             .find(|e| e.owner_id == self.major_auth)
             .ok_or(Error::msg("unknown auth"))?;
-        Ok(self._auth_info(&result.token, &result.session)?)
+        self._auth_info(&result.token, &result.session)
     }
 
     pub fn authenticate(&mut self, account: &str, password: &str) -> Result<Id> {
@@ -326,8 +273,9 @@ impl Host {
         Ok(id)
     }
 
+    #[inline]
     pub fn novel_info(&self, novel_id: Id) -> Result<types::NovelInfo> {
-        Ok(self._novel_info(novel_id)?)
+        self._novel_info(novel_id)
     }
 
     pub fn login(&mut self, id: Id, as_major: bool) -> Result<()> {

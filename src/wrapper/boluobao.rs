@@ -3,13 +3,11 @@ use serde::{de::DeserializeOwned, Deserialize};
 use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ResponseStatus {
-    #[serde(alias = "errorCode")]
     pub error_code: i32,
-    #[serde(alias = "httpCode")]
     pub http_code: i32,
     pub msg: Option<String>,
-    #[serde(alias = "msgType")]
     pub msg_type: i32,
 }
 
