@@ -1,11 +1,13 @@
 use std::{cmp::min, collections::HashMap, ops::Index, path::PathBuf, str::FromStr};
 
 use super::types;
-use crate::consts;
+use crate::{consts, wrapper::boluobao::NoneType};
 
 use anyhow::{bail, Error, Result};
 use reqwest::{blocking::RequestBuilder, header::HeaderMap, Method, StatusCode};
 use serde::{Deserialize, Serialize};
+
+use crate::wrapper::boluobao::Response;
 
 pub type Timestamp = u64;
 pub type Id = i32;
@@ -167,27 +169,8 @@ impl Host {
 impl Host {
     /// 获取登录状态
     fn _auth_info(&self, token: &str, session: &str) -> Result<types::AuthInfo> {
-        use serde_json::Value;
-
         let resp = self.client.with(token, session).get("/user")?.send()?;
-
-        let status_code = resp.status();
-        let data = resp.text()?.parse::<Value>()?;
-
-        if status_code != StatusCode::OK {
-            let msg = data
-                .get("status")
-                .ok_or(Error::msg("bad-formed api request"))?
-                .get("msg")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string();
-            bail!(msg);
-        }
-
-        let data = data.get("data").unwrap().to_owned();
-        let info = serde_json::from_value::<types::_AuthInfo>(data)?;
+        let info = resp.text()?.parse::<Response<types::_AuthInfo>>()?.data()?;
 
         let timestamp = format!("{}Z", info.registerDate)
             .parse::<dateparser::DateTimeUtc>()?
@@ -216,7 +199,7 @@ impl Host {
     /// 验证身份
     fn _authenticate(&mut self, account: &str, password: &str) -> Result<PrivateCredential> {
         use reqwest::header::*;
-        use serde_json::{json, Value};
+        use serde_json::json;
 
         let params = json!({
             "username": account,
@@ -231,26 +214,8 @@ impl Host {
             .body(params.to_string())
             .send()?;
 
-        let stautus_code = resp.status();
         let headers = resp.headers().to_owned();
-        let data = resp
-            .text()?
-            .parse::<Value>()?
-            .as_object()
-            .unwrap()
-            .to_owned();
-
-        if stautus_code != StatusCode::OK {
-            let msg = data
-                .get("status")
-                .ok_or(Error::msg("bad-formed api request"))?
-                .get("msg")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string();
-            bail!(msg);
-        };
+        let _ = resp.text()?.parse::<Response<NoneType>>()?.data()?;
 
         let mut token = String::default();
         let mut session = String::default();
@@ -298,8 +263,6 @@ impl Host {
     }
 
     fn _novel_info(&self, novel_id: Id) -> Result<types::NovelInfo> {
-        use serde_json::Value;
-
         let resp = self
             .client
             .as_guest()
@@ -307,24 +270,10 @@ impl Host {
             .query(&[("expand", consts::FULLEXPAND["novels"])])
             .send()?;
 
-        let status_code = resp.status();
-        let data = resp.text()?.parse::<Value>()?;
-
-        if status_code != StatusCode::OK {
-            let msg = data
-                .get("status")
-                .ok_or(Error::msg("bad-formed api request"))?
-                .get("msg")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string();
-            bail!(msg);
-        }
-
-        let data = data.get("data").unwrap().to_owned();
-        let info = serde_json::from_value::<types::_NovelInfo>(data)?;
-
+        let info = resp
+            .text()?
+            .parse::<Response<types::_NovelInfo>>()?
+            .data()?;
         let expand = info.expand.ok_or(Error::msg("missing expand data"))?;
 
         let add_time = format!("{}Z", info.addTime)
