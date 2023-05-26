@@ -1,7 +1,7 @@
 use std::{cmp::min, collections::HashMap, ops::Index, path::PathBuf, str::FromStr};
 
 use super::types;
-use crate::{consts, wrapper::boluobao::NoneType};
+use crate::{consts, wrapper::Void};
 
 use anyhow::{bail, Error, Result};
 use reqwest::{blocking::RequestBuilder, header::HeaderMap, Method, StatusCode};
@@ -195,7 +195,7 @@ impl Host {
             .send()?;
 
         let headers = resp.headers().to_owned();
-        let _ = resp.text()?.parse::<Response<NoneType>>()?.data()?;
+        let _ = resp.text()?.parse::<Response<Void>>()?.data()?;
 
         let mut token = String::default();
         let mut session = String::default();

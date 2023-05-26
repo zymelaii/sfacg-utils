@@ -21,9 +21,6 @@ pub struct Response<T> {
     data: Option<T>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct NoneType {}
-
 impl<T> FromStr for Response<T>
 where
     T: DeserializeOwned,
