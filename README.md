@@ -1,3 +1,5 @@
+> sfacg-utils is now moved to [zymelaii/ubook-rs](https://github.com/zymelaii/ubook-rs)
+
 <div align="center">
 
 # sfacg-utils
