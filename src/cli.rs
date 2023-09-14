@@ -49,6 +49,12 @@ pub fn cli() -> Command {
                 .arg_required_else_help(true),
         );
 
+    let query = Command::new("query")
+        .arg_required_else_help(true)
+        .arg(arg!(<URL>))
+        .arg(arg!([EXPAND]))
+        .arg(arg!(--params <PARAMS>));
+
     Command::new("sfutils")
         .about("An efficent yet powerful cli for boluobao")
         .version("0.1.0")
@@ -56,6 +62,7 @@ pub fn cli() -> Command {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(auth)
+        .subcommand(query)
 }
 
 impl Proxy {
@@ -163,6 +170,11 @@ fn get_secrets_of(username: &str) -> Result<(String, String)> {
     match local_storage()?.get(username) {
         Some(value) => {
             let account = value.get("email").unwrap().as_str().unwrap().to_string();
+            let account = if account.is_empty() {
+                value.get("phone").unwrap().as_str().unwrap().to_string()
+            } else {
+                account
+            };
             let password = value.get("password").unwrap().as_str().unwrap().to_string();
             Ok((account, password))
         }
